@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace JPEG.Utilities;
 
 public static class MathEx
 {
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static double Sum(int from, int to, Func<int, double> function)
 		=> Enumerable.Range(from, to - from).Sum(function);
 
