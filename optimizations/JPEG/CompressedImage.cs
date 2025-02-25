@@ -1,105 +1,112 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace JPEG;
 
 public class CompressedImage
 {
-	public int Width { get; set; }
-	public int Height { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
 
-	public int Quality { get; set; }
-		
-	public Dictionary<BitsWithLength, byte> DecodeTable { get; set; }
+    public int Quality { get; set; }
 
-	public long BitsCount { get; set; }
-	public byte[] CompressedBytes { get; set; }
+    public Dictionary<BitsWithLength, byte> DecodeTable { get; set; }
 
-	public void Save(string path)
-	{
-		using(var sw = new FileStream(path, FileMode.Create))
-		{
-			byte[] buffer;
+    public long BitsCount { get; set; }
+    public byte[] CompressedBytes { get; set; }
 
-			buffer = BitConverter.GetBytes(Width);
-			sw.Write(buffer, 0, buffer.Length);
+    public void Save(string path)
+    {
+        using var sw = new FileStream(path, FileMode.Create);
+        Span<byte> buffer = stackalloc byte[8];
 
-			buffer = BitConverter.GetBytes(Height);
-			sw.Write(buffer, 0, buffer.Length);
+        var width = Width;
+        MemoryMarshal.Write(buffer, ref width);
+        sw.Write(buffer.Slice(0, 4));
 
-			buffer = BitConverter.GetBytes(Quality);
-			sw.Write(buffer, 0, buffer.Length);
+        var height = Height;
+        MemoryMarshal.Write(buffer, ref height);
+        sw.Write(buffer.Slice(0, 4));
 
-			buffer = BitConverter.GetBytes(DecodeTable.Count);
-			sw.Write(buffer, 0, buffer.Length);
+        var quality = Quality;
+        MemoryMarshal.Write(buffer, ref quality);
+        sw.Write(buffer.Slice(0, 4));
 
-			foreach(var kvp in DecodeTable)
-			{
-				var bits = kvp.Key.Bits;
-				buffer = BitConverter.GetBytes(bits);
-				sw.Write(buffer, 0, buffer.Length);
+        int decodeTableCount = DecodeTable.Count;
+        MemoryMarshal.Write(buffer, ref decodeTableCount);
+        sw.Write(buffer.Slice(0, 4));
 
-				var bitsCount = kvp.Key.BitsCount;
-				buffer = BitConverter.GetBytes(bitsCount);
-				sw.Write(buffer, 0, buffer.Length);
+        foreach (var kvp in DecodeTable)
+        {
+            int bits = kvp.Key.Bits;
+            MemoryMarshal.Write(buffer, ref bits);
+            sw.Write(buffer.Slice(0, 4));
 
-				var mappedByte = kvp.Value;
-				sw.WriteByte(mappedByte);
-			}
+            int bitsCount = kvp.Key.BitsCount;
+            MemoryMarshal.Write(buffer, ref bitsCount);
+            sw.Write(buffer.Slice(0, 4));
 
-			buffer = BitConverter.GetBytes(BitsCount);
-			sw.Write(buffer, 0, buffer.Length);
+            sw.WriteByte(kvp.Value);
+        }
 
-			buffer = BitConverter.GetBytes(CompressedBytes.Length);
-			sw.Write(buffer, 0, buffer.Length);
+        var count = BitsCount;
+        MemoryMarshal.Write(buffer, ref count);
+        sw.Write(buffer.Slice(0, 8));
 
-			sw.Write(CompressedBytes, 0, CompressedBytes.Length);
-		}
-	}
+        int compressedBytesLength = CompressedBytes.Length;
+        MemoryMarshal.Write(buffer, ref compressedBytesLength);
+        sw.Write(buffer.Slice(0, 4));
 
-	public static CompressedImage Load(string path)
-	{
-		var result = new CompressedImage();
-		using var sr = new FileStream(path, FileMode.Open);
-		
-		var buffer = new byte[8];
+        sw.Write(CompressedBytes);
+    }
 
-		sr.Read(buffer, 0, 4);
-		result.Width = BitConverter.ToInt32(buffer, 0);
+    public static CompressedImage Load(string path)
+    {
+        var result = new CompressedImage();
+        using var sr = new FileStream(path, FileMode.Open);
+        
+        Span<byte> buffer = stackalloc byte[16];
 
-		sr.Read(buffer, 0, 4);
-		result.Height = BitConverter.ToInt32(buffer, 0);
+        sr.Read(buffer.Slice(0, 4));
+        result.Width = MemoryMarshal.Read<int>(buffer);
 
-		sr.Read(buffer, 0, 4);
-		result.Quality = BitConverter.ToInt32(buffer, 0);
+        sr.Read(buffer.Slice(0, 4));
+        result.Height = MemoryMarshal.Read<int>(buffer);
 
-		sr.Read(buffer, 0, 4);
-		var decodeTableSize = BitConverter.ToInt32(buffer, 0);
-		result.DecodeTable = new Dictionary<BitsWithLength, byte>(decodeTableSize, new BitsWithLength.Comparer());
+        sr.Read(buffer.Slice(0, 4));
+        result.Quality = MemoryMarshal.Read<int>(buffer);
 
-		for(var i = 0; i < decodeTableSize; i++)
-		{
-			sr.Read(buffer, 0, 4);
-			var bits = BitConverter.ToInt32(buffer, 0);
+        sr.Read(buffer.Slice(0, 4));
+        int decodeTableSize = MemoryMarshal.Read<int>(buffer);
+        result.DecodeTable = new Dictionary<BitsWithLength, byte>(decodeTableSize, new BitsWithLength.Comparer());
 
-			sr.Read(buffer, 0, 4);
-			var bitsCount = BitConverter.ToInt32(buffer, 0);
+        for (var i = 0; i < decodeTableSize; i++)
+        {
+            sr.Read(buffer.Slice(0, 4));
+            var bits = MemoryMarshal.Read<int>(buffer);
 
-			var mappedByte = (byte)sr.ReadByte();
-			result.DecodeTable[new BitsWithLength {Bits = bits, BitsCount = bitsCount}] = mappedByte;
-		}
+            sr.Read(buffer.Slice(0, 4));
+            var bitsCount = MemoryMarshal.Read<int>(buffer);
 
-		sr.Read(buffer, 0, 8);
-		result.BitsCount = BitConverter.ToInt64(buffer, 0);
+            var mappedByte = (byte)sr.ReadByte();
+            result.DecodeTable[new BitsWithLength { Bits = bits, BitsCount = bitsCount }] = mappedByte;
+        }
 
-		sr.Read(buffer, 0, 4);
-		var compressedBytesCount = BitConverter.ToInt32(buffer, 0);
+        sr.Read(buffer.Slice(0, 8));
+        result.BitsCount = MemoryMarshal.Read<long>(buffer);
 
-		result.CompressedBytes = new byte[compressedBytesCount];
-		var totalRead = 0;
-		while(totalRead < compressedBytesCount)
-			totalRead += sr.Read(result.CompressedBytes, totalRead, compressedBytesCount - totalRead);
-		return result;
-	}
+        sr.Read(buffer.Slice(0, 4));
+        int compressedBytesCount = MemoryMarshal.Read<int>(buffer);
+
+        result.CompressedBytes = new byte[compressedBytesCount];
+        int totalRead = 0;
+        while (totalRead < compressedBytesCount)
+        {
+            totalRead += sr.Read(result.CompressedBytes.AsSpan(totalRead, compressedBytesCount - totalRead));
+        }
+
+        return result;
+    }
 }

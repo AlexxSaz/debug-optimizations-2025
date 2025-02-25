@@ -24,22 +24,10 @@ public class JpegProcessorBenchmark
 	{
 		jpegProcessor.Compress(imagePath, compressedImagePath);
 	}
-	
-	[Benchmark]
-	public void CompressParallel()
-	{
-		jpegProcessor.CompressP(imagePath, compressedImagePath);
-	}
 
 	[Benchmark]
 	public void Uncompress()
 	{
 		jpegProcessor.Uncompress(compressedImagePath, uncompressedImagePath);
-	}
-	
-	[Benchmark]
-	public void UncompressParallel()
-	{
-		jpegProcessor.UncompressP(compressedImagePath, uncompressedImagePath);
 	}
 }
