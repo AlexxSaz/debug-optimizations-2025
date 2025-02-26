@@ -36,41 +36,28 @@ public class JpegProcessor : IJpegProcessor
 
     private static CompressedImage Compress(Matrix matrix, int quality = 50)
     {
-        var blocksY = matrix.Height / DCTSize;
-        var blocksX = matrix.Width / DCTSize;
-        const int channelCount = 3;
+        var selectors = new Func<Pixel, double>[] { p => p.Y, p => p.Cb, p => p.Cr };
+        var allQuantizedBytes = new MemoryStream();
 
-        // Используем массив byte[][] для хранения квантованных данных
-        var allQuantizedBytes = new byte[blocksY * blocksX * channelCount][];
-
-        Parallel.For(0, blocksY * blocksX, index =>
+        for (var y = 0; y < matrix.Height; y += DCTSize)
         {
-            var y = (index / blocksX) * DCTSize;
-            var x = (index % blocksX) * DCTSize;
-
-            var channelIndex = 0;
-            foreach (var selector in new Func<Pixel, double>[] { p => p.Y, p => p.Cb, p => p.Cr })
+            for (var x = 0; x < matrix.Width; x += DCTSize)
             {
-                var subMatrix = GetSubMatrix(matrix, y, DCTSize, x, DCTSize, selector);
-                ShiftMatrixValues(subMatrix, -128);
-                var channelFreqs = DCT.DCT2D(subMatrix);
-                var quantizedFreqs = Quantize(channelFreqs, quality);
-                var quantizedBytes = ZigZagScan(quantizedFreqs);
-
-                // Вычисляем индекс для хранения данных
-                var blockIndex = index * channelCount + channelIndex;
-                allQuantizedBytes[blockIndex] = quantizedBytes.ToArray();
-                channelIndex++;
+                foreach (var selector in selectors)
+                {
+                    var subMatrix = GetSubMatrix(matrix, y, DCTSize, x, DCTSize, selector);
+                    ShiftMatrixValues(subMatrix, -128);
+                    var channelFreqs = DCT.DCT2D(subMatrix);
+                    var quantizedFreqs = Quantize(channelFreqs, quality);
+                    var quantizedBytes = ZigZagScan(quantizedFreqs);
+                    allQuantizedBytes.Write(quantizedBytes, 0, quantizedBytes.Length);
+                }
             }
-        });
+        }
 
-        // Объединяем все байты в один массив
-        var flattenedBytes = allQuantizedBytes.SelectMany(b => b).ToArray();
-
-        // Кодируем данные с использованием алгоритма Хаффмана
         long bitsCount;
         Dictionary<BitsWithLength, byte> decodeTable;
-        var compressedBytes = HuffmanCodec.Encode(flattenedBytes, out decodeTable, out bitsCount);
+        var compressedBytes = HuffmanCodec.Encode(allQuantizedBytes.ToArray(), out decodeTable, out bitsCount);
 
         return new CompressedImage
         {
@@ -98,7 +85,7 @@ public class JpegProcessor : IJpegProcessor
         for (var i = 0; i < blocksY * blocksX; i++)
         {
             blockData[i] = new byte[DCTSize * DCTSize * channelCount];
-            allQuantizedBytes.ReadAsync(blockData[i], 0, blockData[i].Length).Wait();
+            allQuantizedBytes.ReadAsync(blockData[i], 0, blockData[i].Length).Wait( );
         }
 
         Parallel.For(0, blocksY * blocksX, index =>
@@ -160,10 +147,10 @@ public class JpegProcessor : IJpegProcessor
         return result;
     }
 
-    private static IEnumerable<byte> ZigZagScan(byte[,] channelFreqs)
+    private static byte[] ZigZagScan(byte[,] channelFreqs)
     {
-        return new[]
-        {
+        return
+        [
             channelFreqs[0, 0], channelFreqs[0, 1], channelFreqs[1, 0], channelFreqs[2, 0], channelFreqs[1, 1],
             channelFreqs[0, 2], channelFreqs[0, 3], channelFreqs[1, 2],
             channelFreqs[2, 1], channelFreqs[3, 0], channelFreqs[4, 0], channelFreqs[3, 1], channelFreqs[2, 2],
@@ -180,7 +167,7 @@ public class JpegProcessor : IJpegProcessor
             channelFreqs[3, 7], channelFreqs[4, 7], channelFreqs[5, 6],
             channelFreqs[6, 5], channelFreqs[7, 4], channelFreqs[7, 5], channelFreqs[6, 6], channelFreqs[5, 7],
             channelFreqs[6, 7], channelFreqs[7, 6], channelFreqs[7, 7]
-        };
+        ];
     }
 
     private static byte[,] ZigZagUnScan(IReadOnlyList<byte> quantizedBytes)

@@ -2,7 +2,7 @@
 
 namespace JPEG.Images;
 
-class Matrix
+record Matrix
 {
 	public readonly Pixel[,] Pixels;
 	public readonly int Height;
