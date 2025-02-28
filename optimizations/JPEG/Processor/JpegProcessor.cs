@@ -13,8 +13,20 @@ namespace JPEG.Processor;
 public class JpegProcessor : IJpegProcessor
 {
     public static readonly JpegProcessor Init = new();
-    public const int CompressionQuality = 70;
     private const byte DCTSize = 8;
+
+    private static readonly int[,] QuantizationMatrix = new[,]
+    {
+        { 8, 6, 5, 8, 12, 20, 26, 31 },
+        { 6, 6, 7, 10, 13, 29, 30, 28 },
+        { 7, 7, 8, 12, 20, 29, 35, 28 },
+        { 7, 9, 11, 15, 26, 44, 40, 31 },
+        { 9, 11, 19, 28, 34, 55, 52, 39 },
+        { 12, 18, 28, 32, 41, 52, 57, 46 },
+        { 25, 32, 39, 44, 52, 61, 60, 51 },
+        { 36, 46, 48, 49, 56, 50, 52, 50 }
+    };
+    
 
     public void Compress(string imagePath, string compressedImagePath)
     {
@@ -22,7 +34,7 @@ public class JpegProcessor : IJpegProcessor
         using var bmp = (Bitmap)Image.FromStream(fileStream, false, false);
         var imageMatrix = (Matrix)bmp;
         //Console.WriteLine($"{bmp.Width}x{bmp.Height} - {fileStream.Length / (1024.0 * 1024):F2} MB");
-        var compressionResult = Compress(imageMatrix, CompressionQuality);
+        var compressionResult = Compress(imageMatrix);
         compressionResult.Save(compressedImagePath);
     }
 
@@ -213,12 +225,11 @@ public class JpegProcessor : IJpegProcessor
     {
         var result = new byte[channelFreqs.GetLength(0), channelFreqs.GetLength(1)];
 
-        var quantizationMatrix = GetQuantizationMatrix(quality);
         for (int y = 0; y < channelFreqs.GetLength(0); y++)
         {
             for (int x = 0; x < channelFreqs.GetLength(1); x++)
             {
-                result[y, x] = (byte)(channelFreqs[y, x] / quantizationMatrix[y, x]);
+                result[y, x] = (byte)(channelFreqs[y, x] / QuantizationMatrix[y, x]);
             }
         }
 
@@ -228,7 +239,6 @@ public class JpegProcessor : IJpegProcessor
     private static double[,] DeQuantize(byte[,] quantizedBytes, int quality)
     {
         var result = new double[quantizedBytes.GetLength(0), quantizedBytes.GetLength(1)];
-        var quantizationMatrix = GetQuantizationMatrix(quality);
 
         for (int y = 0; y < quantizedBytes.GetLength(0); y++)
         {
@@ -236,37 +246,7 @@ public class JpegProcessor : IJpegProcessor
             {
                 result[y, x] =
                     ((sbyte)quantizedBytes[y, x]) *
-                    quantizationMatrix[y, x]; //NOTE cast to sbyte not to loose negative numbers
-            }
-        }
-
-        return result;
-    }
-
-    private static int[,] GetQuantizationMatrix(int quality)
-    {
-        if (quality < 1 || quality > 99)
-            throw new ArgumentException("quality must be in [1,99] interval");
-
-        var multiplier = quality < 50 ? 5000 / quality : 200 - 2 * quality;
-
-        var result = new[,]
-        {
-            { 16, 11, 10, 16, 24, 40, 51, 61 },
-            { 12, 12, 14, 19, 26, 58, 60, 55 },
-            { 14, 13, 16, 24, 40, 57, 69, 56 },
-            { 14, 17, 22, 29, 51, 87, 80, 62 },
-            { 18, 22, 37, 56, 68, 109, 103, 77 },
-            { 24, 35, 55, 64, 81, 104, 113, 92 },
-            { 49, 64, 78, 87, 103, 121, 120, 101 },
-            { 72, 92, 95, 98, 112, 100, 103, 99 }
-        };
-
-        for (int y = 0; y < result.GetLength(0); y++)
-        {
-            for (int x = 0; x < result.GetLength(1); x++)
-            {
-                result[y, x] = (multiplier * result[y, x] + 50) / 100;
+                    QuantizationMatrix[y, x]; //NOTE cast to sbyte not to loose negative numbers
             }
         }
 
