@@ -14,7 +14,6 @@ internal class Program
 			var processor = JpegProcessor.Init;
 			var sw = Stopwatch.StartNew();
 			var imagePath = @"sample.bmp";
-			// var imageName = "Big_Black_River_Railroad_Bridge.bmp";
 			var compressedImagePath = imagePath + ".compressed." + 50;
 			var uncompressedImagePath = imagePath + ".uncompressed." + 50 + ".bmp";
 

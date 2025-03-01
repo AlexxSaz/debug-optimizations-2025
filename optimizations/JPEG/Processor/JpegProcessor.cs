@@ -34,6 +34,7 @@ public class JpegProcessor : IJpegProcessor
         var width = image.Width;
         
         var allQuantizedBytes = new MemoryStream();
+        var dct = new DCT(DCTSize);
 
         for (var y = 0; y < height; y += DCTSize)
         {
@@ -42,8 +43,8 @@ public class JpegProcessor : IJpegProcessor
                 for (byte selector = 0; selector < 3; selector++)
                 {
                     var subMatrix = GetSubMatrix(image, y, DCTSize, x, DCTSize, selector);
-                    var channelFreqs = DCT.DCT2D(subMatrix);
-                    var quantizedFreqs = Quantize(channelFreqs);
+                    var freqs = dct.DCT2D(subMatrix);
+                    var quantizedFreqs = Quantize(freqs);
                     var quantizedBytes = ZigZagScan(quantizedFreqs);
                     allQuantizedBytes.Write(quantizedBytes, 0, quantizedBytes.Length);
                 }
