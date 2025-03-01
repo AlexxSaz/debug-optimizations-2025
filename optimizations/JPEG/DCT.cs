@@ -25,33 +25,33 @@ public class DCT
         }
     }
 
-    public double[,] DCT2D(double[,] input)
+    public void DCT2D(double[,] input, double[,] result)
     {
         var height = input.GetLength(0);
         var width = input.GetLength(1);
 
-        MathEx.LoopByTwoVariables(
-            0, width,
-            0, height,
-            (u, v) =>
+        for (var u = 0; u < width; u++)
+        for (var v = 0; v < height; v++)
+        {
+            var sum = 0d;
+            for (var x = 0; x < width; x++)
+            for (var y = 0; y < height; y++)
             {
-                var sum = MathEx
-                    .SumByTwoVariables(
-                        0, width,
-                        0, height,
-                        (x, y) => BasisFunction(input[x, y], u, v, x, y, height, width));
+                sum += BasisFunction(input[x, y], u, v, x, y, height, width);
+            }
 
-                TempMatrix[u, v] = sum * DctMatrix[u, v];
-            });
-
-        return TempMatrix;
+            result[u, v] = sum * DctMatrix[u, v];
+        }
     }
 
     public static void IDCT2D(double[,] coeffs, double[,] output)
     {
-        for (var x = 0; x < coeffs.GetLength(1); x++)
+        var height = coeffs.GetLength(0);
+        var width = coeffs.GetLength(1);
+        
+        for (var x = 0; x < width; x++)
         {
-            for (var y = 0; y < coeffs.GetLength(0); y++)
+            for (var y = 0; y < height; y++)
             {
                 var sum = MathEx
                     .SumByTwoVariables(
