@@ -32,10 +32,7 @@ public class JpegProcessor : IJpegProcessor
         using var image = new Bitmap(imagePath);
         var height = image.Height;
         var width = image.Width;
-        var pixels = new Color[width, height];
-        for (var i = 0; i < width; i++)
-        for (var j = 0; j < height; j++)
-            pixels[i, j] = image.GetPixel(i, j);
+        var pixels = new Color[DCTSize, DCTSize];
 
         var allQuantizedBytes = new MemoryStream();
         var dct = new DCT(DCTSize);
@@ -46,6 +43,10 @@ public class JpegProcessor : IJpegProcessor
         {
             for (var x = 0; x < width; x += DCTSize)
             {
+                for (var i = x; i < x + DCTSize; i++)
+                for (var j = y; j < y + DCTSize; j++)
+                    pixels[i % DCTSize, j % DCTSize] = image.GetPixel(i, j);
+
                 for (byte selector = 0; selector < 3; selector++)
                 {
                     var subMatrix = GetSubMatrix(pixels, y, DCTSize, x, DCTSize, selector);
@@ -156,7 +157,7 @@ public class JpegProcessor : IJpegProcessor
         for (var j = 0; j < yLength; j++)
         for (var i = 0; i < xLength; i++)
         {
-            var pixel = matrix[xOffset + i, yOffset + j];
+            var pixel = matrix[i, j];
             if (componentSelector == 0)
                 result[j, i] = 16.0 + (65.738 * pixel.R + 129.057 * pixel.G + 24.064 * pixel.B) / 256.0 - 128;
             else if (componentSelector == 1)
