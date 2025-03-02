@@ -49,7 +49,7 @@ public class JpegProcessor : IJpegProcessor
 
                 for (byte selector = 0; selector < 3; selector++)
                 {
-                    var subMatrix = GetSubMatrix(pixels, y, DCTSize, x, DCTSize, selector);
+                    var subMatrix = GetSubMatrix(pixels, DCTSize, selector);
                     dct.DCT2D(subMatrix, tmp);
                     var quantizedFreqs = Quantize(tmp);
                     var quantizedBytes = ZigZagScan(quantizedFreqs);
@@ -150,12 +150,11 @@ public class JpegProcessor : IJpegProcessor
             matrix.Pixels[yOffset + y, xOffset + x] = new Pixel(a[y, x], b[y, x], c[y, x], format);
     }
 
-    private static double[,] GetSubMatrix(Color[,] matrix, int yOffset, byte yLength, int xOffset, byte xLength,
-        byte componentSelector)
+    private static double[,] GetSubMatrix(Color[,] matrix, byte length, byte componentSelector)
     {
-        var result = new double[yLength, xLength];
-        for (var j = 0; j < yLength; j++)
-        for (var i = 0; i < xLength; i++)
+        var result = new double[length, length];
+        for (var j = 0; j < length; j++)
+        for (var i = 0; i < length; i++)
         {
             var pixel = matrix[i, j];
             if (componentSelector == 0)

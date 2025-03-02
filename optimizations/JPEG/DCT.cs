@@ -7,14 +7,10 @@ namespace JPEG;
 public class DCT
 {
     private readonly double[,] DctMatrix;
-    private readonly double[,] DctMatrixTransposed;
-    private double[,] TempMatrix;
 
     public DCT(int dctSize)
     {
         DctMatrix = new double[dctSize, dctSize];
-        DctMatrixTransposed = new double[dctSize, dctSize];
-        TempMatrix = new double[dctSize, dctSize];
 
         for (int u = 0; u < dctSize; u++)
         {
@@ -53,13 +49,13 @@ public class DCT
         {
             for (var y = 0; y < height; y++)
             {
-                var sum = MathEx
-                    .SumByTwoVariables(
-                        0, coeffs.GetLength(1),
-                        0, coeffs.GetLength(0),
-                        (u, v) =>
-                            BasisFunction(coeffs[u, v], u, v, x, y, coeffs.GetLength(0), coeffs.GetLength(1)) *
-                            Alpha(u) * Alpha(v));
+                var sum = 0d;
+                for (var u = 0; u < width; u++)
+                for (var v = 0; v < height; v++)
+                {
+                    sum += BasisFunction(coeffs[u, v], u, v, x, y, coeffs.GetLength(0), coeffs.GetLength(1)) *
+                           Alpha(u) * Alpha(v);
+                }
 
                 output[x, y] = sum * Beta(coeffs.GetLength(0), coeffs.GetLength(1));
             }
