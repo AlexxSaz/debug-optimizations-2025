@@ -14,6 +14,7 @@ public class JpegProcessor : IJpegProcessor
 {
     public static readonly JpegProcessor Init = new();
     private const byte DCTSize = 8;
+    private readonly DCT _dct = new(DCTSize);
 
     private static readonly int[,] QuantizationMatrix = new[,]
     {
@@ -35,7 +36,6 @@ public class JpegProcessor : IJpegProcessor
         var pixels = new Color[DCTSize, DCTSize];
 
         var allQuantizedBytes = new MemoryStream();
-        var dct = new DCT(DCTSize);
 
         var tmp = new double[DCTSize, DCTSize];
 
@@ -50,7 +50,7 @@ public class JpegProcessor : IJpegProcessor
                 for (byte selector = 0; selector < 3; selector++)
                 {
                     var subMatrix = GetSubMatrix(pixels, DCTSize, selector);
-                    dct.DCT2D(subMatrix, tmp);
+                    _dct.DCT2D(subMatrix, tmp);
                     var quantizedFreqs = Quantize(tmp);
                     var quantizedBytes = ZigZagScan(quantizedFreqs);
                     allQuantizedBytes.Write(quantizedBytes, 0, quantizedBytes.Length);
@@ -83,7 +83,7 @@ public class JpegProcessor : IJpegProcessor
         resultBmp.Save(uncompressedImagePath, ImageFormat.Bmp);
     }
 
-    private static Matrix Uncompress(CompressedImage image)
+    private Matrix Uncompress(CompressedImage image)
     {
         var result = new Matrix(image.Height, image.Width);
         using var allQuantizedBytes =
@@ -94,7 +94,6 @@ public class JpegProcessor : IJpegProcessor
         const int channelCount = 3;
 
         var blockData = new byte[blocksY * blocksX][];
-        var dct = new DCT(DCTSize);
 
         for (var i = 0; i < blocksY * blocksX; i++)
         {
@@ -120,7 +119,7 @@ public class JpegProcessor : IJpegProcessor
 
                 var quantizedFreqs = ZigZagUnScan(channelBytes);
                 var channelFreqs = DeQuantize(quantizedFreqs);
-                dct.IDCT2D(channelFreqs, channelIndex == 0 ? _y : (channelIndex == 1 ? cb : cr));
+                _dct.IDCT2D(channelFreqs, channelIndex == 0 ? _y : (channelIndex == 1 ? cb : cr));
                 ShiftMatrixValues(channelIndex == 0 ? _y : (channelIndex == 1 ? cb : cr), 128);
             }
 

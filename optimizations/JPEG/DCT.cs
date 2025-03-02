@@ -9,6 +9,7 @@ public class DCT
     private readonly double[] AlphaValues;
     private readonly double BetaValue;
     private readonly byte DCTSize;
+    private readonly double[,] Cos;
 
     public DCT(byte dctSize)
     {
@@ -16,6 +17,16 @@ public class DCT
         AlphaValues = new double[dctSize];
         BetaValue = 1d / dctSize + 1d / dctSize;
         DCTSize = dctSize;
+        
+        Cos = new double[DCTSize, DCTSize];
+
+        for (int v = 0; v < DCTSize; v++)
+        {
+            for (int y = 0; y < DCTSize; y++)
+            {
+                Cos[v, y] = Math.Cos(((2d * y + 1d) * v * Math.PI) / (2 * DCTSize));
+            }
+        }
 
         for (int u = 0; u < dctSize; u++)
         {
@@ -33,25 +44,6 @@ public class DCT
 
     public void DCT2D(double[,] input, double[,] result)
     {
-        var cosX = new double[DCTSize, DCTSize];
-        var cosY = new double[DCTSize, DCTSize];
-
-        for (int u = 0; u < DCTSize; u++)
-        {
-            for (int x = 0; x < DCTSize; x++)
-            {
-                cosX[u, x] = Math.Cos(((2d * x + 1d) * u * Math.PI) / (2 * DCTSize));
-            }
-        }
-
-        for (int v = 0; v < DCTSize; v++)
-        {
-            for (int y = 0; y < DCTSize; y++)
-            {
-                cosY[v, y] = Math.Cos(((2d * y + 1d) * v * Math.PI) / (2 * DCTSize));
-            }
-        }
-
         for (var u = 0; u < DCTSize; u++)
         {
             for (var v = 0; v < DCTSize; v++)
@@ -62,7 +54,7 @@ public class DCT
                 {
                     for (var y = 0; y < DCTSize; y++)
                     {
-                        sum += input[x, y] * cosX[u, x] * cosY[v, y];
+                        sum += input[x, y] * Cos[u, x] * Cos[v, y];
                     }
                 }
 
@@ -73,25 +65,6 @@ public class DCT
 
     public void IDCT2D(double[,] coeffs, double[,] output)
     {
-        var cosX = new double[DCTSize, DCTSize];
-        var cosY = new double[DCTSize, DCTSize];
-
-        for (int u = 0; u < DCTSize; u++)
-        {
-            for (int x = 0; x < DCTSize; x++)
-            {
-                cosX[u, x] = Math.Cos(((2d * x + 1d) * u * Math.PI) / (2 * DCTSize));
-            }
-        }
-
-        for (int v = 0; v < DCTSize; v++)
-        {
-            for (int y = 0; y < DCTSize; y++)
-            {
-                cosY[v, y] = Math.Cos(((2d * y + 1d) * v * Math.PI) / (2 * DCTSize));
-            }
-        }
-
         for (var x = 0; x < DCTSize; x++)
         {
             for (var y = 0; y < DCTSize; y++)
@@ -102,7 +75,7 @@ public class DCT
                 {
                     for (var v = 0; v < DCTSize; v++)
                     {
-                        sum += coeffs[u, v] * cosX[u, x] * cosY[v, y] * AlphaValues[u] * AlphaValues[v];
+                        sum += coeffs[u, v] * Cos[u, x] * Cos[v, y] * AlphaValues[u] * AlphaValues[v];
                     }
                 }
                 
