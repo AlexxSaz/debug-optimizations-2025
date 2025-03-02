@@ -13,20 +13,11 @@ public class DCT
 
     public DCT(byte dctSize)
     {
+        Cos = new double[dctSize, dctSize];
         DctMatrix = new double[dctSize, dctSize];
         AlphaValues = new double[dctSize];
         BetaValue = 1d / dctSize + 1d / dctSize;
         DCTSize = dctSize;
-        
-        Cos = new double[DCTSize, DCTSize];
-
-        for (int v = 0; v < DCTSize; v++)
-        {
-            for (int y = 0; y < DCTSize; y++)
-            {
-                Cos[v, y] = Math.Cos(((2d * y + 1d) * v * Math.PI) / (2 * DCTSize));
-            }
-        }
 
         for (int u = 0; u < dctSize; u++)
         {
@@ -38,6 +29,7 @@ public class DCT
             for (int v = 0; v < dctSize; v++)
             {
                 DctMatrix[u, v] = BetaValue * AlphaValues[u] * AlphaValues[v];
+                Cos[u, v] = Math.Cos(((2d * v + 1d) * u * Math.PI) / (2 * dctSize));
             }
         }
     }
