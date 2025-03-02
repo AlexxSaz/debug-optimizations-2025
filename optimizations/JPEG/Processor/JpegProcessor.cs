@@ -94,6 +94,7 @@ public class JpegProcessor : IJpegProcessor
         const int channelCount = 3;
 
         var blockData = new byte[blocksY * blocksX][];
+        var dct = new DCT(DCTSize);
 
         for (var i = 0; i < blocksY * blocksX; i++)
         {
@@ -119,7 +120,7 @@ public class JpegProcessor : IJpegProcessor
 
                 var quantizedFreqs = ZigZagUnScan(channelBytes);
                 var channelFreqs = DeQuantize(quantizedFreqs);
-                DCT.IDCT2D(channelFreqs, channelIndex == 0 ? _y : (channelIndex == 1 ? cb : cr));
+                dct.IDCT2D(channelFreqs, channelIndex == 0 ? _y : (channelIndex == 1 ? cb : cr));
                 ShiftMatrixValues(channelIndex == 0 ? _y : (channelIndex == 1 ? cb : cr), 128);
             }
 

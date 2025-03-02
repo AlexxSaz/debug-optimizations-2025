@@ -1,87 +1,119 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
-using JPEG.Utilities;
 
 namespace JPEG;
 
 public class DCT
 {
     private readonly double[,] DctMatrix;
+    private readonly double[] AlphaValues;
+    private readonly double BetaValue;
+    private readonly byte DCTSize;
 
-    public DCT(int dctSize)
+    public DCT(byte dctSize)
     {
         DctMatrix = new double[dctSize, dctSize];
+        AlphaValues = new double[dctSize];
+        BetaValue = 1d / dctSize + 1d / dctSize;
+        DCTSize = dctSize;
+
+        for (int u = 0; u < dctSize; u++)
+        {
+            AlphaValues[u] = Alpha(u);
+        }
 
         for (int u = 0; u < dctSize; u++)
         {
             for (int v = 0; v < dctSize; v++)
             {
-                DctMatrix[u, v] = Beta(dctSize, dctSize) * Alpha(u) * Alpha(v);
+                DctMatrix[u, v] = BetaValue * AlphaValues[u] * AlphaValues[v];
             }
         }
     }
 
     public void DCT2D(double[,] input, double[,] result)
     {
-        var height = input.GetLength(0);
-        var width = input.GetLength(1);
+        var cosX = new double[DCTSize, DCTSize];
+        var cosY = new double[DCTSize, DCTSize];
 
-        for (var u = 0; u < width; u++)
-        for (var v = 0; v < height; v++)
+        for (int u = 0; u < DCTSize; u++)
         {
-            var sum = 0d;
-            for (var x = 0; x < width; x++)
-            for (var y = 0; y < height; y++)
+            for (int x = 0; x < DCTSize; x++)
             {
-                sum += BasisFunction(input[x, y], u, v, x, y, height, width);
+                cosX[u, x] = Math.Cos(((2d * x + 1d) * u * Math.PI) / (2 * DCTSize));
             }
-
-            result[u, v] = sum * DctMatrix[u, v];
         }
-    }
 
-    public static void IDCT2D(double[,] coeffs, double[,] output)
-    {
-        var height = coeffs.GetLength(0);
-        var width = coeffs.GetLength(1);
-        
-        for (var x = 0; x < width; x++)
+        for (int v = 0; v < DCTSize; v++)
         {
-            for (var y = 0; y < height; y++)
+            for (int y = 0; y < DCTSize; y++)
+            {
+                cosY[v, y] = Math.Cos(((2d * y + 1d) * v * Math.PI) / (2 * DCTSize));
+            }
+        }
+
+        for (var u = 0; u < DCTSize; u++)
+        {
+            for (var v = 0; v < DCTSize; v++)
             {
                 var sum = 0d;
-                for (var u = 0; u < width; u++)
-                for (var v = 0; v < height; v++)
+
+                for (var x = 0; x < DCTSize; x++)
                 {
-                    sum += BasisFunction(coeffs[u, v], u, v, x, y, coeffs.GetLength(0), coeffs.GetLength(1)) *
-                           Alpha(u) * Alpha(v);
+                    for (var y = 0; y < DCTSize; y++)
+                    {
+                        sum += input[x, y] * cosX[u, x] * cosY[v, y];
+                    }
                 }
 
-                output[x, y] = sum * Beta(coeffs.GetLength(0), coeffs.GetLength(1));
+                result[u, v] = sum * DctMatrix[u, v];
             }
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static double BasisFunction(double a, double u, double v, double x, double y, int height, int width)
+    public void IDCT2D(double[,] coeffs, double[,] output)
     {
-        var b = Math.Cos(((2d * x + 1d) * u * Math.PI) / (2 * width));
-        var c = Math.Cos(((2d * y + 1d) * v * Math.PI) / (2 * height));
+        var cosX = new double[DCTSize, DCTSize];
+        var cosY = new double[DCTSize, DCTSize];
 
-        return a * b * c;
+        for (int u = 0; u < DCTSize; u++)
+        {
+            for (int x = 0; x < DCTSize; x++)
+            {
+                cosX[u, x] = Math.Cos(((2d * x + 1d) * u * Math.PI) / (2 * DCTSize));
+            }
+        }
+
+        for (int v = 0; v < DCTSize; v++)
+        {
+            for (int y = 0; y < DCTSize; y++)
+            {
+                cosY[v, y] = Math.Cos(((2d * y + 1d) * v * Math.PI) / (2 * DCTSize));
+            }
+        }
+
+        for (var x = 0; x < DCTSize; x++)
+        {
+            for (var y = 0; y < DCTSize; y++)
+            {
+                var sum = 0d;
+
+                for (var u = 0; u < DCTSize; u++)
+                {
+                    for (var v = 0; v < DCTSize; v++)
+                    {
+                        sum += coeffs[u, v] * cosX[u, x] * cosY[v, y] * AlphaValues[u] * AlphaValues[v];
+                    }
+                }
+                
+                output[x, y] = sum * BetaValue;
+            }
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static double Alpha(int u)
     {
-        if (u == 0)
-            return 1 / Math.Sqrt(2);
-        return 1;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static double Beta(int height, int width)
-    {
-        return 1d / width + 1d / height;
+        return u == 0 ? 1 / Math.Sqrt(2) : 1;
     }
 }
