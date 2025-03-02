@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using JPEG.Images;
 using PixelFormat = JPEG.Images.PixelFormat;
@@ -86,9 +87,9 @@ public class JpegProcessor : IJpegProcessor
                 }
 
                 var offset = index * blockSize;
-                for (byte selector = 0; selector < channelCount; selector++)
+                for (byte channelIndex = 0; channelIndex < channelCount; channelIndex++)
                 {
-                    GetSubMatrix(pixels, DctSize, selector, subMatrix);
+                    GetSubMatrix(pixels, DctSize, channelIndex, subMatrix);
                     dct.DCT2D(subMatrix, tmp);
                     QuantizeAndZigZagScan(tmp, result);
                     Buffer.BlockCopy(result, 0, allQuantizedBytes, offset, result.Length);
@@ -117,15 +118,8 @@ public class JpegProcessor : IJpegProcessor
 
     public void Decompress(string compressedImagePath, string uncompressedImagePath)
     {
-        var compressedImage = CompressedImage.Load(compressedImagePath);
-        var uncompressedImage = Decompress(compressedImage);
-        var resultBmp = (Bitmap)uncompressedImage;
-        resultBmp.Save(uncompressedImagePath, ImageFormat.Bmp);
-    }
+        var image = CompressedImage.Load(compressedImagePath);
 
-    private Matrix Decompress(CompressedImage image)
-    {
-        var result = new Matrix(image.Height, image.Width);
         using var allQuantizedBytes =
             new MemoryStream(HuffmanCodec.Decode(image.CompressedBytes, image.DecodeTable, image.BitsCount));
 
@@ -134,11 +128,14 @@ public class JpegProcessor : IJpegProcessor
         const int channelCount = 3;
 
         var blockData = new byte[blocksY * blocksX][];
+        var globalY = new double[image.Height, image.Width];
+        var globalCb = new double[image.Height, image.Width];
+        var globalCr = new double[image.Height, image.Width];
 
         for (var i = 0; i < blocksY * blocksX; i++)
         {
             blockData[i] = new byte[DctSize * DctSize * channelCount];
-            allQuantizedBytes.ReadAsync(blockData[i], 0, blockData[i].Length).Wait();
+            allQuantizedBytes.ReadExactly(blockData[i], 0, blockData[i].Length);
         }
 
         Parallel.For(0, blocksY * blocksX, index =>
@@ -160,23 +157,21 @@ public class JpegProcessor : IJpegProcessor
                 var quantizedFreqs = ZigZagUnScan(channelBytes);
                 var channelFreqs = DeQuantize(quantizedFreqs);
                 dct.IDCT2D(channelFreqs, channelIndex == 0 ? _y : (channelIndex == 1 ? cb : cr));
-                ShiftMatrixValues(channelIndex == 0 ? _y : (channelIndex == 1 ? cb : cr), 128);
             }
 
-            SetPixels(result, _y, cb, cr, PixelFormat.YCbCr, y, x);
+
+            for (var i = 0; i < DctSize; i++)
+            for (var j = 0; j < DctSize; j++)
+            {
+                globalY[i + y, j + x] = _y[i, j];
+                globalCb[i + y, j + x] = cb[i, j];
+                globalCr[i + y, j + x] = cr[i, j];
+            }
         });
 
-        return result;
-    }
 
-    private static void ShiftMatrixValues(double[,] subMatrix, int shiftValue)
-    {
-        var height = subMatrix.GetLength(0);
-        var width = subMatrix.GetLength(1);
-
-        for (var y = 0; y < height; y++)
-        for (var x = 0; x < width; x++)
-            subMatrix[y, x] += shiftValue;
+        var resultBmp = GetBitmap(image.Width, image.Height, globalY, globalCb, globalCr);
+        resultBmp.Save(uncompressedImagePath, ImageFormat.Bmp);
     }
 
     private static void SetPixels(Matrix matrix, double[,] a, double[,] b, double[,] c, PixelFormat format,
@@ -270,5 +265,59 @@ public class JpegProcessor : IJpegProcessor
         }
 
         return result;
+    }
+
+    private static Bitmap GetBitmap(int width, int height, double[,] _y, double[,] cr, double[,] cb)
+    {
+        var bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+        // Блокируем Bitmap в памяти
+        var bitmapData = bitmap.LockBits(
+            new Rectangle(0, 0, width, height),
+            ImageLockMode.WriteOnly,
+            System.Drawing.Imaging.PixelFormat.Format32bppArgb
+        );
+
+        unsafe
+        {
+            // Получаем указатель на данные
+            byte* scan0 = (byte*)bitmapData.Scan0;
+
+            // Заполняем Bitmap данными из массивов
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    // Преобразуем значения double в byte (0-255)
+                    byte r = (byte)ToByte((298.082 * _y[y, x] + 408.583 * cr[y, x]) / 256.0 - 222.921);
+                    byte g = (byte)ToByte((298.082 * _y[y, x] - 100.291 * cb[y, x] - 208.120 * cr[y, x]) / 256.0 + 135.576);
+                    byte b = (byte)ToByte((298.082 * _y[y, x] + 516.412 * cb[y, x]) / 256.0 - 276.836);
+
+                    // Вычисляем позицию пикселя в памяти
+                    int offset = y * bitmapData.Stride + x * 4; // 4 байта на пиксель (ARGB)
+
+                    // Записываем цветовые компоненты
+                    scan0[offset + 2] = r; // Красный
+                    scan0[offset + 1] = g; // Зеленый
+                    scan0[offset] = b; // Синий
+                    scan0[offset + 3] = 255; // Альфа-канал (непрозрачность)
+                }
+            }
+        }
+
+        // Разблокируем Bitmap
+        bitmap.UnlockBits(bitmapData);
+
+        return bitmap;
+    }
+    
+    private static int ToByte(double d)
+    {
+        var val = (int)d;
+        if (val > byte.MaxValue)
+            return byte.MaxValue;
+        if (val < byte.MinValue)
+            return byte.MinValue;
+        return val;
     }
 }

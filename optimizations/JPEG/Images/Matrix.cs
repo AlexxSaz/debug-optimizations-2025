@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace JPEG.Images;
 
@@ -39,18 +40,50 @@ record Matrix
 
 	public static explicit operator Bitmap(Matrix matrix)
 	{
-		var bmp = new Bitmap(matrix.Width, matrix.Height);
+		var height = matrix.Height;
+		var width = matrix.Width;
+		
+		var bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
-		for (var j = 0; j < bmp.Height; j++)
+		// Блокируем Bitmap в памяти
+		var bitmapData = bitmap.LockBits(
+			new Rectangle(0, 0, width, height),
+			ImageLockMode.WriteOnly,
+			System.Drawing.Imaging.PixelFormat.Format32bppArgb
+		);
+
+		unsafe
 		{
-			for (var i = 0; i < bmp.Width; i++)
+			// Получаем указатель на данные
+			byte* scan0 = (byte*)bitmapData.Scan0;
+
+			// Заполняем Bitmap данными из массивов
+			for (int y = 0; y < height; y++)
 			{
-				var pixel = matrix.Pixels[j, i];
-				bmp.SetPixel(i, j, Color.FromArgb(ToByte(pixel.R), ToByte(pixel.G), ToByte(pixel.B)));
+				for (int x = 0; x < width; x++)
+				{
+					var pixel = matrix.Pixels[y, x];
+					// Преобразуем значения double в byte (0-255)
+					byte r = (byte)pixel.R;
+					byte g = (byte)pixel.G;
+					byte b = (byte)pixel.B;
+
+					// Вычисляем позицию пикселя в памяти
+					int offset = y * bitmapData.Stride + x * 4; // 4 байта на пиксель (ARGB)
+
+					// Записываем цветовые компоненты
+					scan0[offset + 2] = r; // Красный
+					scan0[offset + 1] = g; // Зеленый
+					scan0[offset] = b;     // Синий
+					scan0[offset + 3] = 255; // Альфа-канал (непрозрачность)
+				}
 			}
 		}
 
-		return bmp;
+		// Разблокируем Bitmap
+		bitmap.UnlockBits(bitmapData);
+
+		return bitmap;
 	}
 
 	public static int ToByte(double d)

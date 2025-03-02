@@ -71,7 +71,7 @@ public class DCT
                     }
                 }
                 
-                output[x, y] = sum * BetaValue;
+                output[x, y] = sum * BetaValue + 128;
             }
         }
     }
