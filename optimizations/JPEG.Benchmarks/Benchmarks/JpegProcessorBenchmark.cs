@@ -28,6 +28,6 @@ public class JpegProcessorBenchmark
 	[Benchmark]
 	public void Uncompress()
 	{
-		jpegProcessor.Uncompress(compressedImagePath, uncompressedImagePath);
+		jpegProcessor.Decompress(compressedImagePath, uncompressedImagePath);
 	}
 }

@@ -4,5 +4,5 @@ public interface IJpegProcessor
 {
 	void Compress(string imagePath, string compressedImagePath);
 
-	void Uncompress(string compressedImagePath, string uncompressedImagePath);
+	void Decompress(string compressedImagePath, string uncompressedImagePath);
 }

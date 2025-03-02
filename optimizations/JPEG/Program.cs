@@ -23,7 +23,7 @@ internal class Program
 			Console.WriteLine("Compression: " + sw.ElapsedMilliseconds);
 
 			sw.Restart();
-			processor.Uncompress(compressedImagePath, uncompressedImagePath);
+			processor.Decompress(compressedImagePath, uncompressedImagePath);
 			sw.Stop();
 			Console.WriteLine("Decompression: " + sw.ElapsedMilliseconds);
 			Console.WriteLine($"Peak commit size: {MemoryMeter.PeakPrivateBytes() / (1024.0 * 1024):F2} MB");
