@@ -201,7 +201,7 @@ class HuffmanCodec
 			}
 		}
 
-		nodes.Sort((a, b) => a.Frequency.CompareTo(b.Frequency));
+		nodes.Sort((a, b) => b.Frequency.CompareTo(a.Frequency));
 
 		foreach (var node in nodes)
 		{
