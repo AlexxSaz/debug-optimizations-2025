@@ -1,12 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
-using JPEG.Images;
-using PixelFormat = JPEG.Images.PixelFormat;
 
 namespace JPEG.Processor;
 
@@ -59,7 +55,7 @@ public class JpegProcessor : IJpegProcessor
         var width = image.Width;
 
         var bitmapData = image.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly,
-            System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            PixelFormat.Format32bppArgb);
         var stride = bitmapData.Stride;
         var scan0 = bitmapData.Scan0;
 
@@ -232,12 +228,12 @@ public class JpegProcessor : IJpegProcessor
 
     private static Bitmap GetBitmap(int width, int height, double[,] _y, double[,] cr, double[,] cb)
     {
-        var bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
 
         var bitmapData = bitmap.LockBits(
             new Rectangle(0, 0, width, height),
             ImageLockMode.WriteOnly,
-            System.Drawing.Imaging.PixelFormat.Format32bppArgb
+            PixelFormat.Format32bppArgb
         );
 
         unsafe
