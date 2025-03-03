@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace JPEG;
 
-public class DCT
+public class DCT : IAlgorithm
 {
     private readonly float[,] DctMatrix;
     private readonly float[] AlphaValues;
@@ -34,7 +34,7 @@ public class DCT
         }
     }
 
-    public void DCT2D(float[,] input, float[,] result)
+    public void Forward(float[,] input, float[,] result)
     {
         for (var u = 0; u < DCTSize; u++)
         {
@@ -55,7 +55,7 @@ public class DCT
         }
     }
 
-    public void IDCT2D(float[,] coeffs, float[,] output)
+    public void Backward(float[,] coeffs, float[,] output)
     {
         for (var x = 0; x < DCTSize; x++)
         {

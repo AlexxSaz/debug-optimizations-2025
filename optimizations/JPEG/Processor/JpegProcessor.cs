@@ -14,7 +14,7 @@ public class JpegProcessor : IJpegProcessor
 {
     public static readonly JpegProcessor Init = new();
     private const byte DctSize = 8;
-    private readonly DCT dct = new(DctSize);
+    private readonly FCT fct = new(DctSize);
 
     private static readonly int[,] QuantizationMatrix = new[,]
     {
@@ -102,7 +102,7 @@ public class JpegProcessor : IJpegProcessor
                 for (byte channelIndex = 0; channelIndex < channelCount; channelIndex++)
                 {
                     GetSubMatrix(pixels, DctSize, channelIndex, subMatrix);
-                    dct.DCT2D(subMatrix, tmp);
+                    fct.Forward(subMatrix, tmp);
                     QuantizeAndZigZagScan(tmp, result);
                     Buffer.BlockCopy(result, 0, allQuantizedBytes, offset, result.Length);
                     offset += result.Length;
@@ -168,11 +168,10 @@ public class JpegProcessor : IJpegProcessor
                 Buffer.BlockCopy(quantizedBytes, channelIndex * DctSize * DctSize, channelBytes, 0, DctSize * DctSize);
 
                 ZigZagUnScanAndDeQuantize(channelBytes, tmp);
-                dct.IDCT2D(tmp, channelIndex == 0 ? _y : (channelIndex == 1 ? cb : cr));
+                fct.Backward(tmp, channelIndex == 0 ? _y : (channelIndex == 1 ? cb : cr));
                 ShiftMatrixValues(channelIndex == 0 ? _y : (channelIndex == 1 ? cb : cr), 128);
             }
-
-
+            
             for (var i = 0; i < DctSize; i++)
             for (var j = 0; j < DctSize; j++)
             {
