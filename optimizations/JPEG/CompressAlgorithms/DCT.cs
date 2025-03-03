@@ -5,18 +5,18 @@ namespace JPEG;
 
 public class DCT
 {
-    private readonly double[,] DctMatrix;
-    private readonly double[] AlphaValues;
-    private readonly double BetaValue;
+    private readonly float[,] DctMatrix;
+    private readonly float[] AlphaValues;
+    private readonly float BetaValue;
     private readonly byte DCTSize;
-    private readonly double[,] Cos;
+    private readonly float[,] Cos;
 
     public DCT(byte dctSize)
     {
-        Cos = new double[dctSize, dctSize];
-        DctMatrix = new double[dctSize, dctSize];
-        AlphaValues = new double[dctSize];
-        BetaValue = 1d / dctSize + 1d / dctSize;
+        Cos = new float[dctSize, dctSize];
+        DctMatrix = new float[dctSize, dctSize];
+        AlphaValues = new float[dctSize];
+        BetaValue = 1f / dctSize + 1f / dctSize;
         DCTSize = dctSize;
 
         for (int u = 0; u < dctSize; u++)
@@ -29,18 +29,18 @@ public class DCT
             for (int v = 0; v < dctSize; v++)
             {
                 DctMatrix[u, v] = BetaValue * AlphaValues[u] * AlphaValues[v];
-                Cos[u, v] = Math.Cos(((2d * v + 1d) * u * Math.PI) / (2 * dctSize));
+                Cos[u, v] = (float)Math.Cos(((2d * v + 1d) * u * Math.PI) / (2 * dctSize));
             }
         }
     }
 
-    public void DCT2D(double[,] input, double[,] result)
+    public void DCT2D(float[,] input, float[,] result)
     {
         for (var u = 0; u < DCTSize; u++)
         {
             for (var v = 0; v < DCTSize; v++)
             {
-                var sum = 0d;
+                var sum = 0f;
 
                 for (var x = 0; x < DCTSize; x++)
                 {
@@ -55,13 +55,13 @@ public class DCT
         }
     }
 
-    public void IDCT2D(double[,] coeffs, double[,] output)
+    public void IDCT2D(float[,] coeffs, float[,] output)
     {
         for (var x = 0; x < DCTSize; x++)
         {
             for (var y = 0; y < DCTSize; y++)
             {
-                var sum = 0d;
+                var sum = 0f;
 
                 for (var u = 0; u < DCTSize; u++)
                 {
@@ -77,8 +77,8 @@ public class DCT
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static double Alpha(int u)
+    private static float Alpha(int u)
     {
-        return u == 0 ? 1 / Math.Sqrt(2) : 1;
+        return u == 0 ? (float)(1 / Math.Sqrt(2)) : 1;
     }
 }

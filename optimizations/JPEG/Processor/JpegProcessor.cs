@@ -80,9 +80,9 @@ public class JpegProcessor : IJpegProcessor
                 var x = (index % blocksX) * DctSize;
 
                 var pixels = new Color[DctSize, DctSize];
-                var tmp = new double[DctSize, DctSize];
+                var tmp = new float[DctSize, DctSize];
                 byte[] result = new byte[DctSize * DctSize];
-                var subMatrix = new double[DctSize, DctSize];
+                var subMatrix = new float[DctSize, DctSize];
 
                 for (var i = x; i < x + DctSize; i++)
                 {
@@ -155,10 +155,10 @@ public class JpegProcessor : IJpegProcessor
             var y = (index / blocksX) * DctSize;
             var x = (index % blocksX) * DctSize;
 
-            var _y = new double[DctSize, DctSize];
-            var cb = new double[DctSize, DctSize];
-            var cr = new double[DctSize, DctSize];
-            var tmp = new double[DctSize, DctSize];
+            var _y = new float[DctSize, DctSize];
+            var cb = new float[DctSize, DctSize];
+            var cr = new float[DctSize, DctSize];
+            var tmp = new float[DctSize, DctSize];
             
             var quantizedBytes = blockData[index];
 
@@ -187,32 +187,29 @@ public class JpegProcessor : IJpegProcessor
         resultBmp.Save(uncompressedImagePath, ImageFormat.Bmp);
     }
 
-    private static void ShiftMatrixValues(double[,] subMatrix, int shiftValue)
+    private static void ShiftMatrixValues(float[,] subMatrix, int shiftValue)
     {
-        var height = subMatrix.GetLength(0);
-        var width = subMatrix.GetLength(1);
-
-        for (var y = 0; y < height; y++)
-        for (var x = 0; x < width; x++)
+        for (var y = 0; y < DctSize; y++)
+        for (var x = 0; x < DctSize; x++)
             subMatrix[y, x] += shiftValue;
     }
 
-    private static void GetSubMatrix(Color[,] matrix, byte length, byte componentSelector, double[,] result)
+    private static void GetSubMatrix(Color[,] matrix, byte length, byte componentSelector, float[,] result)
     {
         for (var j = 0; j < length; j++)
         for (var i = 0; i < length; i++)
         {
             var pixel = matrix[i, j];
             if (componentSelector == 0)
-                result[j, i] = 0.299 * pixel.R + 0.587 * pixel.G + 0.114 * pixel.B - 128;
+                result[j, i] = (float)(0.299 * pixel.R + 0.587 * pixel.G + 0.114 * pixel.B - 128);
             else if (componentSelector == 1)
-                result[j, i] = -0.168736 * pixel.R - 0.331264 * pixel.G + 0.5 * pixel.B + 128 - 128;
+                result[j, i] = (float)(-0.168736 * pixel.R - 0.331264 * pixel.G + 0.5 * pixel.B + 128 - 128);
             else if (componentSelector == 2)
-                result[j, i] = 0.5 * pixel.R - 0.418688 * pixel.G - 0.081312 * pixel.B + 128 - 128;
+                result[j, i] = (float)(0.5 * pixel.R - 0.418688 * pixel.G - 0.081312 * pixel.B + 128 - 128);
         }
     }
 
-    private static void ZigZagUnScanAndDeQuantize(byte[] quantizedBytes, double[,] result)
+    private static void ZigZagUnScanAndDeQuantize(byte[] quantizedBytes, float[,] result)
     {
         for (int i = 0; i < ZigZagUnOrder.Length; i++)
         {
@@ -223,7 +220,7 @@ public class JpegProcessor : IJpegProcessor
         }
     }
 
-    private static void QuantizeAndZigZagScan(double[,] channelFreqs, byte[] result)
+    private static void QuantizeAndZigZagScan(float[,] channelFreqs, byte[] result)
     {
         for (int i = 0; i < ZigzagOrder.Length; i++)
         {

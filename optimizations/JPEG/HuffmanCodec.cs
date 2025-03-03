@@ -38,8 +38,8 @@ public class BitsWithLength
 
 class BitsBuffer
 {
-	private List<byte> buffer = new List<byte>();
-	private BitsWithLength unfinishedBits = new BitsWithLength();
+	private List<byte> buffer = new();
+	private BitsWithLength unfinishedBits = new();
 
 	public void Add(BitsWithLength bitsWithLength)
 	{
@@ -52,7 +52,7 @@ class BitsBuffer
 			bitsCount -= neededBits;
 			buffer.Add((byte)((unfinishedBits.Bits << neededBits) + (bits >> bitsCount)));
 
-			bits = bits & ((1 << bitsCount) - 1);
+			bits &= (1 << bitsCount) - 1;
 
 			unfinishedBits.Bits = 0;
 			unfinishedBits.BitsCount = 0;
