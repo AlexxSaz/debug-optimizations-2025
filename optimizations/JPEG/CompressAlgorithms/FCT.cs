@@ -109,9 +109,9 @@ public class FCT : IAlgorithm
         }
     }
 
-    private void FCTMove(float[] data)
+    private void FCTMove(Span<float> data)
     {
-        float[] temp = new float[DCTSize];
+        Span<float> temp = stackalloc float[DCTSize];
 
         for (int k = 0; k < DCTSize; k++)
         {
@@ -126,12 +126,12 @@ public class FCT : IAlgorithm
 
         temp[0] *= invSqrt2;
 
-        Array.Copy(temp, data, DCTSize);
+        temp.CopyTo(data);
     }
 
-    private void IFCTMove(float[] data)
+    private void IFCTMove(Span<float> data)
     {
-        float[] temp = new float[DCTSize];
+        Span<float> temp = stackalloc float[DCTSize];
 
         for (int i = 0; i < DCTSize; i++)
         {
@@ -145,6 +145,6 @@ public class FCT : IAlgorithm
             temp[i] = sum * sqrt2n;
         }
 
-        Array.Copy(temp, data, DCTSize);
+        temp.CopyTo(data);
     }
 }
